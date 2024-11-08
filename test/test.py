@@ -15,7 +15,10 @@ def get_stage(dut):
     try:
         return dut.uut.stage.value.integer
     except AttributeError:
-        return dut._id(f"\\uut.stage", extended=False).value.integer
+        stage = 0
+        for i in range(3):
+            stage += (dut.uut._id(f"\\stage[{i}]", extended=False).value) << i
+        return stage
 
 async def init(dut):
     clock = Clock(dut.clk, CLOCK_PERIOD, units=CLOCK_UNITS)
