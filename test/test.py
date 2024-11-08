@@ -3,51 +3,356 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
+CLOCK_PERIOD = 10  # 100 MHz
+CLOCK_UNITS = "ns"
 
-@cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
+def get_control_signals(dut):
+    return (dut.uo_out.value.integer << 8) | (dut.uio_out.value.integer)
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 100, units="ns")
+def get_stage(dut):
+    return dut.uut._id(f"\\stage", extended=False).value.integer
+
+async def init(dut):
+    clock = Clock(dut.clk, CLOCK_PERIOD, units=CLOCK_UNITS)
     cocotb.start_soon(clock.start())
 
     # Reset
-    dut.rst_n.vaue = 0
     dut._log.info("Reset")
-    await ClockCycles(dut.clk, 30)
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 11)
     dut.rst_n.value = 1
 
-    dut._log.info("Test NOP")
-    dut.ui_in.value = 1
-    await ClockCycles(dut.clk, 1000)
+@cocotb.test()
+async def test_HLT(dut):
+    await init(dut)
+    dut.ui_in.value = 0x00
 
-    dut._log.info("Test ADD")
-    dut.ui_in.value = 2
-    await ClockCycles(dut.clk, 1000)
+    await ClockCycles(dut.clk, 1)
 
-    dut._log.info("Test SUB")
-    dut.ui_in.value = 3
-    await ClockCycles(dut.clk, 1000)
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
 
-    dut._log.info("Test LDA")
-    dut.ui_in.value = 4
-    await ClockCycles(dut.clk, 1000)
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
 
-    dut._log.info("Test OUT")
-    dut.ui_in.value = 5
-    await ClockCycles(dut.clk, 1000)
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
 
-    dut._log.info("Test STA")
-    dut.ui_in.value = 6
-    await ClockCycles(dut.clk, 1000)
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x8FE3
 
-    dut._log.info("Test JMP")
-    dut.ui_in.value = 7
-    await ClockCycles(dut.clk, 1000)
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x7
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x8FE3
 
-    dut._log.info("Test HLT")
-    dut.ui_in.value = 0
-    await ClockCycles(dut.clk, 1000) 
+    await ClockCycles(dut.clk, 10)
+    assert get_stage(dut) == 0x7
+    assert get_control_signals(dut) == 0x8FE3
+
+@cocotb.test()
+async def test_NOP(dut):
+    await init(dut)
+    dut.ui_in.value = 0x01
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_ADD(dut):
+    await init(dut)
+    dut.ui_in.value = 0x02
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x07A3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0DE1
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FC7
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_SUB(dut):
+    await init(dut)
+    dut.ui_in.value = 0x03
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x07A3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0DE1
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FCF
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_LDA(dut):
+    await init(dut)
+    dut.ui_in.value = 0x04
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x07A3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0DC3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_OUT(dut):
+    await init(dut)
+    dut.ui_in.value = 0x05
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FF2
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_STA(dut):
+    await init(dut)
+    dut.ui_in.value = 0x06
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x07A3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0BF3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0EE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+@cocotb.test()
+async def test_JMP(dut):
+    await init(dut)
+    dut.ui_in.value = 0x07
+
+    await ClockCycles(dut.clk, 1)
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x0
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x27E3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x1
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x4FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x2
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0D63
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x3
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x1FA3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x4
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x5
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
+
+    await FallingEdge(dut.clk)
+    assert get_stage(dut) == 0x6
+    await RisingEdge(dut.clk)
+    assert get_control_signals(dut) == 0x0FE3
