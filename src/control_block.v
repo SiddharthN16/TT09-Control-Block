@@ -5,7 +5,7 @@
 
 `default_nettype none
 
-module tt_um_control_block (
+module tt_um_ece298a_control_block (
     input wire clk,
     
     input  wire [7:0] ui_in,    // Dedicated inputs - only bits 0 to 3 are used
