@@ -12,7 +12,7 @@ def get_control_signals(dut):
     return (dut.uo_out.value.integer << 8) | (dut.uio_out.value.integer)
 
 def get_stage(dut):
-    return dut.uut._id(f"\\stage", extended=False).value.integer
+    return dut.uut.stage.value.integer
 
 async def init(dut):
     clock = Clock(dut.clk, CLOCK_PERIOD, units=CLOCK_UNITS)
