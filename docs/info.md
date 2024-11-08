@@ -15,4 +15,4 @@ Implemented using a 6 stage sequential counter for sequencing micro-instructions
 
 ## How to test
 
-Provide input of op-code. Check that the correct output bits are being asserted/deasserted properly.
+Provide input of opcode. Check that the correct output bits are being asserted/deasserted properly.
